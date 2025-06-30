@@ -1,18 +1,52 @@
 'use client';
 
+import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { ArrowDown, Star } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { contentService, HeroContent } from '@/lib/contentService';
 import Link from 'next/link';
 
 export function HeroSection() {
+  const [heroContent, setHeroContent] = useState<HeroContent | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchHeroContent = async () => {
+      try {
+        const content = await contentService.getHeroContent();
+        setHeroContent(content);
+      } catch (error) {
+        console.error('Error fetching hero content:', error);
+        // Fallback content will be used from contentService
+        const fallbackContent = await contentService.getHeroContent();
+        setHeroContent(fallbackContent);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchHeroContent();
+  }, []);
+
+  if (loading || !heroContent) {
+    return (
+      <section className="relative min-h-screen flex items-center justify-center overflow-hidden bg-gradient-to-br from-emerald-500 to-orange-500">
+        <div className="text-center text-white">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-white mx-auto mb-4"></div>
+          <p>Loading...</p>
+        </div>
+      </section>
+    );
+  }
+
   return (
     <section className="relative min-h-screen flex items-center justify-center overflow-hidden">
       {/* Background Image */}
       <div 
         className="absolute inset-0 bg-cover bg-center bg-no-repeat"
         style={{
-          backgroundImage: `linear-gradient(rgba(0, 0, 0, 0.4), rgba(0, 0, 0, 0.4)), url('https://images.pexels.com/photos/5966630/pexels-photo-5966630.jpeg?auto=compress&cs=tinysrgb&w=1920&h=1080&fit=crop')`
+          backgroundImage: `linear-gradient(rgba(0, 0, 0, 0.4), rgba(0, 0, 0, 0.4)), url('${heroContent.background_image || 'https://images.pexels.com/photos/5966630/pexels-photo-5966630.jpeg?auto=compress&cs=tinysrgb&w=1920&h=1080&fit=crop'}')`
         }}
       />
       
@@ -68,13 +102,16 @@ export function HeroSection() {
             transition={{ delay: 0.4 }}
             className="text-5xl md:text-7xl font-bold leading-tight"
           >
-            Premium Fresh
-            <br />
-            <span className="bg-gradient-to-r from-emerald-400 to-orange-400 bg-clip-text text-transparent">
-              Mangoes
-            </span>
-            <br />
-            From Bangladesh
+            {heroContent.title.split(' ').map((word, index) => {
+              if (word.toLowerCase() === 'mangoes' || word.toLowerCase() === 'bangladesh') {
+                return (
+                  <span key={index} className="bg-gradient-to-r from-emerald-400 to-orange-400 bg-clip-text text-transparent">
+                    {word}
+                  </span>
+                );
+              }
+              return word + ' ';
+            })}
           </motion.h1>
 
           {/* Subtitle */}
@@ -84,8 +121,7 @@ export function HeroSection() {
             transition={{ delay: 0.6 }}
             className="text-xl md:text-2xl text-gray-200 max-w-2xl mx-auto leading-relaxed"
           >
-            Experience the sweetest, juiciest mangoes directly from our sustainable farms. 
-            Eco-friendly packaging, nationwide delivery.
+            {heroContent.subtitle}
           </motion.p>
 
           {/* CTA Buttons */}
@@ -97,7 +133,7 @@ export function HeroSection() {
           >
             <Link href="#packages">
               <Button size="lg" className="bg-emerald-500 hover:bg-emerald-600 text-white px-8 py-4 text-lg rounded-full">
-                Shop Now
+                {heroContent.cta_text}
               </Button>
             </Link>
             <Link href="#harvest">

@@ -7,11 +7,13 @@ import { Button } from '@/components/ui/button';
 import { useSelector, useDispatch } from 'react-redux';
 import { RootState } from '@/lib/store';
 import { toggleCart } from '@/lib/slices/cartSlice';
+import { contentService, NavigationContent } from '@/lib/contentService';
 import Link from 'next/link';
 
 export function Header() {
   const [isOpen, setIsOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
+  const [navContent, setNavContent] = useState<NavigationContent | null>(null);
   const dispatch = useDispatch();
   const { items } = useSelector((state: RootState) => state.cart);
   const { isAuthenticated } = useSelector((state: RootState) => state.auth);
@@ -24,7 +26,32 @@ export function Header() {
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
+  useEffect(() => {
+    const fetchNavContent = async () => {
+      try {
+        const content = await contentService.getNavigationContent();
+        setNavContent(content);
+      } catch (error) {
+        console.error('Error fetching navigation content:', error);
+        const fallbackContent = await contentService.getNavigationContent();
+        setNavContent(fallbackContent);
+      }
+    };
+
+    fetchNavContent();
+  }, []);
+
   const itemCount = items.reduce((sum, item) => sum + item.quantity, 0);
+
+  // Use fallback if content is not loaded yet
+  const brandName = navContent?.brand_name || 'Mango Harvest BD';
+  const brandLogo = navContent?.brand_logo;
+  const navigationLinks = navContent?.links || [
+    { name: 'How We Harvest', href: '#harvest' },
+    { name: 'Packaging', href: '#packaging' },
+    { name: 'Packages', href: '#packages' },
+    { name: 'Reviews', href: '#reviews' }
+  ];
 
   return (
     <motion.header
@@ -40,26 +67,39 @@ export function Header() {
         <div className="flex justify-between items-center h-16">
           {/* Logo */}
           <Link href="/" className="flex items-center space-x-2">
-            <div className="w-8 h-8 bg-gradient-to-r from-emerald-500 to-orange-500 rounded-full flex items-center justify-center">
-              <span className="text-white font-bold text-sm">M</span>
-            </div>
-            <span className="font-bold text-xl text-gray-900">Mango Harvest BD</span>
+            {brandLogo ? (
+              <img 
+                src={brandLogo} 
+                alt={brandName}
+                className="w-8 h-8 object-contain"
+                onError={(e) => {
+                  // Fallback to default logo if image fails to load
+                  (e.target as HTMLImageElement).style.display = 'none';
+                  const fallbackDiv = document.createElement('div');
+                  fallbackDiv.className = 'w-8 h-8 bg-gradient-to-r from-emerald-500 to-orange-500 rounded-full flex items-center justify-center';
+                  fallbackDiv.innerHTML = '<span class="text-white font-bold text-sm">M</span>';
+                  (e.target as HTMLImageElement).parentNode?.insertBefore(fallbackDiv, e.target);
+                }}
+              />
+            ) : (
+              <div className="w-8 h-8 bg-gradient-to-r from-emerald-500 to-orange-500 rounded-full flex items-center justify-center">
+                <span className="text-white font-bold text-sm">M</span>
+              </div>
+            )}
+            <span className="font-bold text-xl text-gray-900">{brandName}</span>
           </Link>
 
           {/* Desktop Navigation */}
           <nav className="hidden md:flex items-center space-x-8">
-            <a href="#harvest" className="text-gray-700 hover:text-emerald-600 transition-colors">
-              How We Harvest
-            </a>
-            <a href="#packaging" className="text-gray-700 hover:text-emerald-600 transition-colors">
-              Packaging
-            </a>
-            <a href="#packages" className="text-gray-700 hover:text-emerald-600 transition-colors">
-              Packages
-            </a>
-            <a href="#reviews" className="text-gray-700 hover:text-emerald-600 transition-colors">
-              Reviews
-            </a>
+            {navigationLinks.map((link, index) => (
+              <a 
+                key={index}
+                href={link.href} 
+                className="text-gray-700 hover:text-emerald-600 transition-colors"
+              >
+                {link.name}
+              </a>
+            ))}
           </nav>
 
           {/* Actions */}
@@ -70,7 +110,7 @@ export function Header() {
               onClick={() => dispatch(toggleCart())}
               className="relative color-black"
             >
-              <ShoppingCart className="h-5 w-5" outline="black" />
+              <ShoppingCart className="h-5 w-5" />
               {itemCount > 0 && (
                 <span className="absolute -top-2 -right-2 bg-emerald-500 text-xs rounded-full h-5 w-5 flex items-center justify-center">
                   {itemCount}
@@ -79,9 +119,9 @@ export function Header() {
             </Button>
 
             {isAuthenticated ? (
-              <Link href="/profile" className="">
+              <Link href="/profile">
                 <Button variant="ghost" size="sm">
-                  <User className="h-5 w-5" className="" />
+                  <User className="h-5 w-5" />
                 </Button>
               </Link>
             ) : (
@@ -111,34 +151,16 @@ export function Header() {
           className="md:hidden overflow-hidden"
         >
           <div className="py-4 space-y-4">
-            <a
-              href="#harvest"
-              className="block text-gray-700 hover:text-emerald-600 transition-colors"
-              onClick={() => setIsOpen(false)}
-            >
-              How We Harvest
-            </a>
-            <a
-              href="#packaging"
-              className="block text-gray-700 hover:text-emerald-600 transition-colors"
-              onClick={() => setIsOpen(false)}
-            >
-              Packaging
-            </a>
-            <a
-              href="#packages"
-              className="block text-gray-700 hover:text-emerald-600 transition-colors"
-              onClick={() => setIsOpen(false)}
-            >
-              Packages
-            </a>
-            <a
-              href="#reviews"
-              className="block text-gray-700 hover:text-emerald-600 transition-colors"
-              onClick={() => setIsOpen(false)}
-            >
-              Reviews
-            </a>
+            {navigationLinks.map((link, index) => (
+              <a
+                key={index}
+                href={link.href}
+                className="block text-gray-700 hover:text-emerald-600 transition-colors"
+                onClick={() => setIsOpen(false)}
+              >
+                {link.name}
+              </a>
+            ))}
           </div>
         </motion.div>
       </div>

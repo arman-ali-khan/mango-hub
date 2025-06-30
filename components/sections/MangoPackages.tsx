@@ -1,64 +1,44 @@
 'use client';
 
+import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Check, Star, Package } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { contentService, PackagesContent } from '@/lib/contentService';
 import Link from 'next/link';
 
-const packages = [
-  {
-    id: 'package-5kg',
-    name: '5KG Premium Pack',
-    weight: '5KG',
-    price: 1200,
-    originalPrice: 1500,
-    description: 'Perfect for small families',
-    features: [
-      '15-20 premium mangoes',
-      'Eco-friendly packaging',
-      'Same day delivery in Dhaka',
-      'Freshness guarantee'
-    ],
-    image: 'https://images.pexels.com/photos/8844113/pexels-photo-8844113.jpeg?auto=compress&cs=tinysrgb&w=400&h=300&fit=crop',
-    popular: false
-  },
-  {
-    id: 'package-10kg',
-    name: '10KG Family Pack',
-    weight: '10KG',
-    price: 2200,
-    originalPrice: 2800,
-    description: 'Most popular choice',
-    features: [
-      '30-40 premium mangoes',
-      'Premium eco-packaging',
-      'Free delivery nationwide',
-      'Quality assurance',
-      'Bonus: 5 extra mangoes'
-    ],
-    image: 'https://images.pexels.com/photos/5947081/pexels-photo-5947081.jpeg?auto=compress&cs=tinysrgb&w=400&h=300&fit=crop',
-    popular: true
-  },
-  {
-    id: 'package-20kg',
-    name: '20KG Bulk Pack',
-    weight: '20KG',
-    price: 4000,
-    originalPrice: 5200,
-    description: 'Best value for events',
-    features: [
-      '60-80 premium mangoes',
-      'Bulk packaging solution',
-      'Express delivery',
-      'Corporate discount available',
-      'Free storage tips guide'
-    ],
-    image: 'https://images.pexels.com/photos/1132047/pexels-photo-1132047.jpeg?auto=compress&cs=tinysrgb&w=400&h=300&fit=crop',
-    popular: false
-  }
-];
-
 export function MangoPackages() {
+  const [packagesContent, setPackagesContent] = useState<PackagesContent | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchPackagesContent = async () => {
+      try {
+        const content = await contentService.getPackagesContent();
+        setPackagesContent(content);
+      } catch (error) {
+        console.error('Error fetching packages content:', error);
+        const fallbackContent = await contentService.getPackagesContent();
+        setPackagesContent(fallbackContent);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchPackagesContent();
+  }, []);
+
+  if (loading || !packagesContent) {
+    return (
+      <section id="packages" className="py-20 bg-gradient-to-br from-orange-50 to-emerald-50">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-emerald-500 mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading packages...</p>
+        </div>
+      </section>
+    );
+  }
+
   return (
     <section id="packages" className="py-20 bg-gradient-to-br from-orange-50 to-emerald-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -70,16 +50,22 @@ export function MangoPackages() {
           className="text-center mb-16"
         >
           <h2 className="text-4xl md:text-5xl font-bold text-gray-900 mb-4">
-            Choose Your <span className="text-emerald-500">Package</span>
+            {packagesContent.title.split(' ').map((word, index) => {
+              if (word.toLowerCase() === 'package') {
+                return (
+                  <span key={index} className="text-emerald-500">{word} </span>
+                );
+              }
+              return word + ' ';
+            })}
           </h2>
           <p className="text-xl text-gray-600 max-w-3xl mx-auto">
-            Select the perfect mango package for your needs. All packages include premium quality mangoes 
-            with our freshness guarantee.
+            {packagesContent.subtitle}
           </p>
         </motion.div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-          {packages.map((pkg, index) => (
+          {packagesContent.packages.map((pkg, index) => (
             <motion.div
               key={pkg.id}
               initial={{ opacity: 0, y: 50 }}
